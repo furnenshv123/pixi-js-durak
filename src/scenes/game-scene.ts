@@ -1,10 +1,11 @@
-import { Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 import { Scene } from '../impl/scene-impl';
 import { Navigator } from '../utils/navigator';
 import { ShuffleAnimation } from '../animations/shuffle-animation';
 import { CardData, createShuffledDeck, selectRandomTrump } from '../types/cards/cards';
 import { TrumpSelectAnimation } from '../animations/trump-select-anim';
 import { DistributeAnimation } from '../animations/distribution-anim';
+import { GoingFirstScene } from './going-first-scene';
 
 export class GameScene extends Scene {
   private shuffle: ShuffleAnimation | null = null;
@@ -32,6 +33,18 @@ export class GameScene extends Scene {
     this.addChild(this.cardLayer);
     this.tableLayer = new Container();
     this.addChild(this.tableLayer);
+    const chifir = new Sprite(Assets.get('/assets/chifir.png'));
+    const spichki = new Sprite(Assets.get('/assets/spichki.png'));
+    chifir.anchor.set(0.5);
+    spichki.anchor.set(0.5);
+    chifir.x = w - 200;
+    chifir.y = h - 100;
+    chifir.scale.set(0.5);
+    spichki.x = 300;
+    spichki.y = 200;
+    spichki.scale.set(0.5);
+    this.addChild(chifir, spichki);
+    
     const label = new Text({
       text: 'Shuffling deck…',
       style: new TextStyle({
@@ -49,13 +62,13 @@ export class GameScene extends Scene {
     this.shuffle.play(async () => {
       label.text = 'Selecting trump';
       this.trumpCard = await selectRandomTrump(this.mainDeck);
-      await this.trumpSelect();
+      await this.trumpSelect(label);
       label.text = 'Ready!';
-      this.distributionStart(label);
 
     }, 200, Navigator.height / 2, async () => {
       this.mainDeck = await createShuffledDeck();
     });
+
   }
 
   private distributionStart(label: Text): void {
@@ -68,14 +81,24 @@ export class GameScene extends Scene {
       this.enemyHandLayer,
       () => {
         label.text = 'Cards dealt!';
+        this.selectFirstGoingPlayer(label);
       }
     );
 
     dist.play(this.playerCards, this.enemyCards);
   }
-  private async trumpSelect(): Promise<void> {
+  private selectFirstGoingPlayer(label: Text): void {
+    Navigator.push(new GoingFirstScene());
+    Navigator.once('selectPlayer', (player: 'player' | 'enemy') => {
+      label.text = `${player === 'player' ? 'You' : 'Enemy'} goes first!`;
+      Navigator.pop();
+    });
+  }
+  private async trumpSelect(label: Text): Promise<void> {
     if (!this.trumpCard) return;
     this.trumpSelectAnim = new TrumpSelectAnimation(Navigator.app, this.cardLayer, this.trumpCard, () => {
+      this.distributionStart(label);
+
     });
     this.trumpSelectAnim.play();
   }

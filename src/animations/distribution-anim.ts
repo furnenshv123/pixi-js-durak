@@ -1,9 +1,6 @@
 import { Application, Container, Sprite, Ticker, Assets } from 'pixi.js';
 import { CardData } from '../types/cards/cards';
 
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
 
 function easeOut(t: number): number {
   return 1 - Math.pow(1 - t, 3);
@@ -11,9 +8,9 @@ function easeOut(t: number): number {
 
 const CARD_W = 80;
 const CARD_H = 112;
-const FLY_DUR = 0.35;         
-const CARD_INTERVAL = 0.15;   
-type Phase  = 'sliding' | 'done';
+const FLY_DUR = 0.35;
+const CARD_INTERVAL = 0.15;
+type Phase = 'sliding' | 'done';
 function bezier(p0: number, p1: number, p2: number, t: number): number {
   return (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2;
 }
@@ -22,20 +19,20 @@ interface DealCard {
   sprite: Sprite;
   fromX: number;
   fromY: number;
-  midX: number; 
+  midX: number;
   midY: number;
   toX: number;
   toY: number;
-  delay: number;       
-  done: boolean;      
+  delay: number;
+  done: boolean;
 }
 
 export class DistributeAnimation {
   private app: Application;
-  private deckContainer: Container;       
-  private playerContainer: Container;     
-  private enemyContainer: Container;     
-  phase : Phase = 'sliding';
+  private deckContainer: Container;
+  private playerContainer: Container;
+  private enemyContainer: Container;
+  phase: Phase = 'sliding';
   private dealQueue: DealCard[] = [];
   private phaseTime = 0;
   private onComplete?: () => void;
@@ -54,7 +51,7 @@ export class DistributeAnimation {
     this.onComplete = onComplete;
   }
 
- 
+
   play(playerCards: CardData[], enemyCards: CardData[]): void {
     this.dealQueue = [];
     this.phaseTime = 0;
@@ -75,14 +72,14 @@ export class DistributeAnimation {
     for (let i = 0; i < total; i++) {
       if (i < enemyCards.length) {
         const destX = this.calcHandX(i, enemyCards.length);
-        const destY = 80; 
+        const destY = 80;
 
         this.dealQueue.push({
-          sprite: this.buildCardSprite(enemyCards[i], true), 
+          sprite: this.buildCardSprite(enemyCards[i], true),
           fromX: deckX,
           fromY: deckY,
           midX: tableX,
-          midY: tableY - 60, 
+          midY: tableY - 60,
           toX: destX,
           toY: destY,
           delay: delayCounter * CARD_INTERVAL,
@@ -93,14 +90,14 @@ export class DistributeAnimation {
 
       if (i < playerCards.length) {
         const destX = this.calcHandX(i, playerCards.length);
-        const destY = this.app.screen.height - 80; 
+        const destY = this.app.screen.height - 80;
 
         this.dealQueue.push({
-          sprite: this.buildCardSprite(playerCards[i], false), 
+          sprite: this.buildCardSprite(playerCards[i], false),
           fromX: deckX,
           fromY: deckY,
           midX: tableX,
-          midY: tableY + 60,  
+          midY: tableY + 60,
           toX: destX,
           toY: destY,
           delay: delayCounter * CARD_INTERVAL,

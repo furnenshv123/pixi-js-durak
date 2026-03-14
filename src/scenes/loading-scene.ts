@@ -54,7 +54,8 @@ export class LoadingScene extends Scene {
   private async loadAssets(barW: number, barH: number) {
     const w = Navigator.width;
     const h = Navigator.height;
-
+    await Assets.load('/assets/chifir.png');
+    await Assets.load('/assets/spichki.png');
     await Assets.load(CARD_ASSETS, (progress) => {
       const pct = Math.round(progress * 100);
 
