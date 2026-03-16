@@ -44,8 +44,8 @@ export class RouletteAnimation {
     const radius = 120;
 
     const sections = [
-      { label: '👤 You',    color: 0x2255aa, from: 0,        to: Math.PI },      // top half
-      { label: '🤖 Enemy',  color: 0xaa2222, from: Math.PI,  to: Math.PI * 2 },  // bottom half
+      { label: '👤 You',    color: 0x2255aa, from: 0,        to: Math.PI },     
+      { label: '🤖 Enemy',  color: 0xaa2222, from: Math.PI,  to: Math.PI * 2 }, 
     ];
 
     for (const section of sections) {

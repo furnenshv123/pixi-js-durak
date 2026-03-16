@@ -13,7 +13,7 @@ export class GoingFirstScene extends Scene {
         this.addChild(this.container);
         const overlay = new Graphics()
             .rect(0, 0, w, h)
-            .fill({ color: 0x000000, alpha: 0.6 });
+            .fill({ color: 0x000000, alpha: 0});
         this.addChild(overlay);
 
 
