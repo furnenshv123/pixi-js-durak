@@ -8,13 +8,16 @@ import { DistributeAnimation } from '../animations/distribution-anim';
 import { GoingFirstScene } from './going-first-scene';
 import { TableManager } from '../managers/table-manager';
 import { DraggableCard } from '../types/cards/draggable-card';
+import { RefillAnimation, RefillHandConfig } from '../animations/refill-animation';
+import { TakeCardsAnimation } from '../animations/take-cards-anim';
+import { DiscardAnimation } from '../animations/discard-animation';
 
 type TurnPhase =
-  | 'player-attack'    
-  | 'enemy-defense'    
-  | 'enemy-attack'    
-  | 'player-defense'  
-  | 'round-end';       
+  | 'player-attack'
+  | 'enemy-defense'
+  | 'enemy-attack'
+  | 'player-defense'
+  | 'round-end';
 
 export class GameScene extends Scene {
   private shuffle: ShuffleAnimation | null = null;
@@ -148,25 +151,25 @@ export class GameScene extends Scene {
 
   private onEndAttack(): void {
     const attacked = this.tableManager!.getSlots().filter(s => s.attackCard !== null).length;
-    if (attacked === 0) return; 
+    if (attacked === 0) return;
     this.hideAllButtons();
     this.disableAllDraggable();
     this.turnPhase = 'enemy-defense';
     this.statusLabel.text = 'Enemy is defending...';
 
-    setTimeout(() => this.simulateEnemyDefense(), 1000);
+    setTimeout(() => this.startEnemyDefense(), 1000);
   }
 
-  private simulateEnemyDefense(): void {
-    const canDefend = false; 
+  private startEnemyDefense(): void {
+    const canDefend = false;
 
     if (canDefend) {
-     
+
       this.statusLabel.text = 'Enemy defended! Round over.';
       setTimeout(() => this.endRound(false), 1200);
     } else {
       this.statusLabel.text = 'Enemy takes the cards!';
-      setTimeout(() => this.endRound(true), 1200); 
+      setTimeout(() => this.endRound(true), 1200);
     }
   }
 
@@ -180,7 +183,7 @@ export class GameScene extends Scene {
       this.statusLabel.text = 'Enemy attacked! Defend or take cards.';
       this.turnPhase = 'player-defense';
       this.makeCardsDraggable('defense');
-      this.showOnly(this.btnTakeCards);   
+      this.showOnly(this.btnTakeCards);
       this.uiLayer.addChild(this.btnDoneDefending);
       this.showOnly(this.btnDoneDefending);
       this.btnTakeCards.visible = true;
@@ -192,6 +195,7 @@ export class GameScene extends Scene {
     this.hideAllButtons();
     this.disableAllDraggable();
     this.statusLabel.text = 'You took the cards.';
+
     setTimeout(() => this.endRound(false), 1000);
   }
 
@@ -203,14 +207,21 @@ export class GameScene extends Scene {
   }
 
   private endRound(enemyTookCards: boolean): void {
-    this.tableManager?.clearTable();
     this.draggableCards = [];
     this.statusLabel.text = 'Next round...';
+    const listOfSpritesToDiscard = this.tableManager!.getSlots().map(s => [s.sprite, s.defSprite]).flat().filter(s => s !== null) as Sprite[];
+    new DiscardAnimation(Navigator.app).play(listOfSpritesToDiscard, () => {
+      new RefillAnimation(Navigator.app, this.cardLayer).play({
+        new
+      });
+    });
+    this.tableManager?.clearTable();
+
     setTimeout(() => {
       if (enemyTookCards) {
-        this.startPlayerAttackPhase(); 
+        this.startPlayerAttackPhase();
       } else {
-        this.startEnemyAttackPhase(); 
+        this.startEnemyAttackPhase();
       }
     }, 1200);
   }

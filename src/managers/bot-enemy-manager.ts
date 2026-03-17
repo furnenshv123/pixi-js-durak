@@ -9,10 +9,11 @@ export class BotEnemyManager {
         this.tableManager = tableManager;
         this.enemyCards = enemyCards;
     }
-
+    analyzePlayerAttcak() { }
+    analyzeTable() { }
     endAttack() { }
     takeCards() { }
     doneDefending() {
     }
-    saveCardsTurns(){}
+    saveCardsTurns() { }
 }
