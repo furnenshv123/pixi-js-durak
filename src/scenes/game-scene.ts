@@ -1,4 +1,4 @@
-import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text, TextStyle, TilingSpriteShader } from 'pixi.js';
 import { Scene } from '../impl/scene-impl';
 import { Navigator } from '../utils/navigator';
 import { ShuffleAnimation } from '../animations/shuffle-animation';
@@ -16,8 +16,7 @@ type TurnPhase =
   | 'player-attack'
   | 'enemy-defense'
   | 'enemy-attack'
-  | 'player-defense'
-  | 'round-end';
+  | 'player-defense';
 
 export class GameScene extends Scene {
   private shuffle: ShuffleAnimation | null = null;
@@ -38,6 +37,10 @@ export class GameScene extends Scene {
   private btnEndAttack!: Container;
   private btnTakeCards!: Container;
   private btnDoneDefending!: Container;
+  private refillAnim: RefillAnimation | null = null;
+  private takeCardsPlayerAnim: TakeCardsAnimation | null = null;
+  private takeCardsEnemyAnim: TakeCardsAnimation | null = null;
+  private discardAnim: DiscardAnimation | null = null;
   onStart(): void {
     const w = Navigator.width;
     const h = Navigator.height;
@@ -132,6 +135,10 @@ export class GameScene extends Scene {
     Navigator.push(new GoingFirstScene());
     Navigator.once('selectPlayer', (player: 'player' | 'enemy') => {
       Navigator.pop();
+      this.refillAnim = new RefillAnimation(Navigator.app, this.cardLayer);
+      this.discardAnim = new DiscardAnimation(Navigator.app);
+      this.takeCardsPlayerAnim = new TakeCardsAnimation(Navigator.app, this.playerHandLayer);
+      this.takeCardsEnemyAnim = new TakeCardsAnimation(Navigator.app, this.enemyHandLayer);
       if (player === 'player') {
         this.startPlayerAttackPhase();
       } else {
@@ -166,10 +173,10 @@ export class GameScene extends Scene {
     if (canDefend) {
 
       this.statusLabel.text = 'Enemy defended! Round over.';
-      setTimeout(() => this.endRound(false), 1200);
+      setTimeout(() => this.endRound(false, false, this.turnPhase), 1200);
     } else {
       this.statusLabel.text = 'Enemy takes the cards!';
-      setTimeout(() => this.endRound(true), 1200);
+      setTimeout(() => this.endRound(true, false, this.turnPhase), 1200);
     }
   }
 
@@ -196,37 +203,70 @@ export class GameScene extends Scene {
     this.disableAllDraggable();
     this.statusLabel.text = 'You took the cards.';
 
-    setTimeout(() => this.endRound(false), 1000);
+    setTimeout(() => this.endRound(false, true, this.turnPhase), 1000);
   }
 
   private onDoneDefending(): void {
     this.hideAllButtons();
     this.disableAllDraggable();
     this.statusLabel.text = 'Round over!';
-    setTimeout(() => this.endRound(false), 1000);
+    setTimeout(() => this.endRound(false, false, this.turnPhase), 1000);
   }
 
-  private endRound(enemyTookCards: boolean): void {
+  private endRound(enemyTookCards: boolean, playerTookCards: boolean, phase: TurnPhase): void {
     this.draggableCards = [];
     this.statusLabel.text = 'Next round...';
-    const listOfSpritesToDiscard = this.tableManager!.getSlots().map(s => [s.sprite, s.defSprite]).flat().filter(s => s !== null) as Sprite[];
-    new DiscardAnimation(Navigator.app).play(listOfSpritesToDiscard, () => {
-      new RefillAnimation(Navigator.app, this.cardLayer).play({
-        new
-      });
-    });
-    this.tableManager?.clearTable();
 
-    setTimeout(() => {
-      if (enemyTookCards) {
-        this.startPlayerAttackPhase();
-      } else {
-        this.startEnemyAttackPhase();
-      }
-    }, 1200);
+
+    this.conditionCheckEndRound(enemyTookCards, playerTookCards, phase);
   }
+  private conditionCheckEndRound(enemyTookCards: boolean, playerTookCards: boolean, phase: TurnPhase): void {
+    if (!enemyTookCards && !playerTookCards) {
+      const listOfSpritesToDiscard = this.tableManager!.getSlots().map(s => [s.sprite, s.defSprite]).flat().filter(s => s !== null) as Sprite[];
 
+      this.discardAnim!.play(listOfSpritesToDiscard, () => {
+        if (this.mainDeck.length > 0) {
+          const firstLengthToRefill = phase === 'player-attack' ? this.playerCards.length : this.enemyCards.length;
+          const secondLengthToRefill = phase === 'player-attack' ? this.enemyCards.length : this.playerCards.length;
+          const firstConfig: RefillHandConfig = {
+            newCards: this.mainDeck.slice(0, 6 - firstLengthToRefill),
+            existingCount: phase === 'player-attack' ? this.playerCards.length : this.enemyCards.length,
+            handContainer: phase === 'player-attack' ? this.playerHandLayer : this.enemyHandLayer,
+            isEnemy: phase === 'player-attack' ? false : true,
+          };
+          const secondConfig: RefillHandConfig = {
+            newCards: this.mainDeck.slice(6 - firstLengthToRefill, 12 - secondLengthToRefill),
+            existingCount: phase === 'player-attack' ? this.enemyCards.length : this.playerCards.length,
+            handContainer: phase === 'player-attack' ? this.enemyHandLayer : this.playerHandLayer,
+            isEnemy: phase === 'player-attack' ? true : false,
+          };
+          this.refillAnim?.play(firstConfig, secondConfig, () => {
+            if (phase === 'player-attack') {
+              this.startEnemyAttackPhase();
+            } else {
+              this.startPlayerAttackPhase();
+            }
+          });
+        }
 
+      });
+    } else if (enemyTookCards) {
+      const listOfSpritesToTake = this.tableManager!.getSlots().map(s => [s.sprite, s.defSprite]).flat().filter(s => s !== null) as Sprite[];
+
+      this.takeCardsEnemyAnim?.play(listOfSpritesToTake, this.enemyCards.length, () => {
+        this.tableManager?.clearTable();
+        this.startPlayerAttackPhase();
+      });
+    } else if (playerTookCards) {
+      const listOfSpritesToTake = this.tableManager!.getSlots().map(s => [s.sprite, s.defSprite]).flat().filter(s => s !== null) as Sprite[];
+
+      this.takeCardsEnemyAnim?.play(listOfSpritesToTake, this.playerCards.length, () => {
+        this.tableManager?.clearTable();
+        this.startEnemyAttackPhase();
+      });
+    }
+
+  }
   private createButton(label: string, x: number, y: number, color: number, onClick: () => void): Container {
     const btn = new Container();
     btn.x = x;
